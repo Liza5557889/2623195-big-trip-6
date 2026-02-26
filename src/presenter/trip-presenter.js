@@ -1,27 +1,50 @@
 import SortView from '../view/sort-view.js';
 import EditFormView from '../view/edit-form-view.js';
-import CreateFormView from '../view/create-form-view.js';
 import RoutePointView from '../view/point-view.js';
 import {render, RenderPosition} from '../render.js';
 
-const ROUTE_POINT_COUNT = 3;
-
 export default class TripPresenter {
-  constructor({tripEventsContainer}) {
+  sortComponent = new SortView();
+
+  constructor({tripEventsContainer, pointsModel}) {
     this.tripEventsContainer = tripEventsContainer;
+    this.pointsModel = pointsModel;
   }
 
   init() {
+    this.boardPoints = [...this.pointsModel.getPoints()];
+
     this.tripEventsContainer.innerHTML = '';
 
-    render(new SortView(), this.tripEventsContainer, RenderPosition.AFTERBEGIN);
+    render(this.sortComponent, this.tripEventsContainer, RenderPosition.AFTERBEGIN);
 
-    render(new EditFormView(), this.tripEventsContainer);
+    if (this.boardPoints.length > 0) {
+      const firstPoint = this.boardPoints[0];
+      const pointOffers = this.pointsModel.getOffersByType(firstPoint.type);
 
-    render(new CreateFormView(), this.tripEventsContainer);
+      render(
+        new EditFormView({
+          point: firstPoint,
+          destinations: this.pointsModel.getDestinations(),
+          offers: pointOffers
+        }),
+        this.tripEventsContainer
+      );
+    }
 
-    for (let i = 0; i < ROUTE_POINT_COUNT; i++) {
-      render(new RoutePointView(), this.tripEventsContainer);
+    for (let i = 1; i < this.boardPoints.length; i++) {
+      const point = this.boardPoints[i];
+      const destination = this.pointsModel.getDestinationById(point.destination);
+      const pointOffers = this.pointsModel.getOffersByType(point.type);
+
+      render(
+        new RoutePointView({
+          point,
+          destination,
+          offers: pointOffers
+        }),
+        this.tripEventsContainer
+      );
     }
   }
 }
