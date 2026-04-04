@@ -59,4 +59,14 @@ const OFFERS_BY_TYPE = {
   ]
 };
 
-export {TYPES, CITIES, DESCRIPTIONS, OFFERS_BY_TYPE};
+
+const FilterType = {
+  EVERYTHING: 'everything',
+  FUTURE: 'future',
+  PRESENT: 'present',
+  PAST: 'past'
+};
+
+export {TYPES, CITIES, DESCRIPTIONS, OFFERS_BY_TYPE, FilterType};
+
+

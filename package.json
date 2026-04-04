@@ -12,7 +12,8 @@
   ],
   "scripts": {
     "lint": "eslint src/",
-    "start": "webpack serve --mode development --open"
+    "start": "webpack serve --mode development --open",
+    "build": "webpack --mode production"
   },
   "devDependencies": {
     "@babel/core": "7.21.4",

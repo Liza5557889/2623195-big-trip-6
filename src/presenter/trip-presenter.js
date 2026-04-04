@@ -2,16 +2,20 @@ import SortView from '../view/sort-view.js';
 import EditFormView from '../view/edit-form-view.js';
 import RoutePointView from '../view/point-view.js';
 import TripEventsListView from '../view/trip-events-list-view.js';
-import {render, replace} from '../framework/render.js';
+import EmptyPointsView from '../view/empty-points-view.js';
+import {render, replace, remove} from '../framework/render.js';
+import dayjs from 'dayjs';
 
 export default class TripPresenter {
   #sortComponent = new SortView();
   #tripEventsListComponent = new TripEventsListView();
+  #emptyPointsComponent = null;
   #tripEventsContainer = null;
   #pointsModel = null;
   #boardPoints = [];
   #destinations = [];
   #offers = [];
+  #currentFilter = 'everything';
 
   constructor({tripEventsContainer, pointsModel}) {
     this.#tripEventsContainer = tripEventsContainer;
@@ -26,14 +30,40 @@ export default class TripPresenter {
     this.#tripEventsContainer.innerHTML = '';
 
     render(this.#sortComponent, this.#tripEventsContainer);
-    render(this.#tripEventsListComponent, this.#tripEventsContainer);
 
-    this.#renderPoints();
+    this.#renderPointsList();
   }
 
-  #renderPoints() {
-    for (let i = 0; i < this.#boardPoints.length; i++) {
-      this.#renderPoint(this.#boardPoints[i]);
+  #renderPointsList() {
+    const filteredPoints = this.#getFilteredPoints();
+
+    if (filteredPoints.length === 0) {
+      this.#renderEmptyPoints();
+      return;
+    }
+
+    this.#renderTripEventsList();
+    this.#renderPoints(filteredPoints);
+  }
+
+  #renderEmptyPoints() {
+    if (this.#emptyPointsComponent) {
+      remove(this.#emptyPointsComponent);
+    }
+    this.#emptyPointsComponent = new EmptyPointsView();
+    render(this.#emptyPointsComponent, this.#tripEventsContainer);
+  }
+
+  #renderTripEventsList() {
+    if (this.#emptyPointsComponent) {
+      remove(this.#emptyPointsComponent);
+    }
+    render(this.#tripEventsListComponent, this.#tripEventsContainer);
+  }
+
+  #renderPoints(points) {
+    for (let i = 0; i < points.length; i++) {
+      this.#renderPoint(points[i]);
     }
   }
 
@@ -87,5 +117,34 @@ export default class TripPresenter {
   }
 
   #handleDeleteClick() {
+  }
+
+  #getFilteredPoints() {
+    if (this.#currentFilter === 'everything') {
+      return [...this.#boardPoints];
+    }
+
+    if (this.#currentFilter === 'future') {
+      return this.#boardPoints.filter((point) => dayjs(point.dateFrom).isAfter(dayjs()));
+    }
+
+    if (this.#currentFilter === 'present') {
+      return this.#boardPoints.filter((point) =>
+        dayjs(point.dateFrom).isBefore(dayjs()) && dayjs(point.dateTo).isAfter(dayjs())
+      );
+    }
+
+    if (this.#currentFilter === 'past') {
+      return this.#boardPoints.filter((point) => dayjs(point.dateTo).isBefore(dayjs()));
+    }
+
+    return [...this.#boardPoints];
+  }
+
+  updateFilter(filterType) {
+    this.#currentFilter = filterType;
+    this.#tripEventsContainer.innerHTML = '';
+    render(this.#sortComponent, this.#tripEventsContainer);
+    this.#renderPointsList();
   }
 }
