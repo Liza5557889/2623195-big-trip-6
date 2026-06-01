@@ -20,6 +20,7 @@ const tripPresenter = new TripPresenter({
 
 const filtersView = new FiltersView({
   filters,
+  currentFilterType: 'everything',
   onFilterChange: (filterType) => {
     tripPresenter.updateFilter(filterType);
   }

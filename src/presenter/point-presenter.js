@@ -28,21 +28,17 @@ export default class PointPresenter {
     render(this.#pointComponent, this.#container);
   }
 
-  // НОВЫЙ МЕТОД ДЛЯ ОБНОВЛЕНИЯ ТОЧКИ
   update(point) {
     this.#point = point;
 
-    // Сохраняем старый компонент
     const oldPointComponent = this.#pointComponent;
 
-    // Создаем новый компонент с обновленными данными
     this.#pointComponent = new RoutePointView({
       point: this.#point,
       destination: this.#getDestination(),
       offers: this.#getPointOffers()
     });
 
-    // Копируем обработчики на новый компонент
     this.#pointComponent.setEditClickHandler(() => {
       this.#replacePointToForm();
     });
@@ -55,7 +51,6 @@ export default class PointPresenter {
       this.#handleDataChange(updatedPoint);
     });
 
-    // Заменяем старый компонент новым
     replace(this.#pointComponent, oldPointComponent);
   }
 
