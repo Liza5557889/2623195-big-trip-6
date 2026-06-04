@@ -3,14 +3,14 @@ import {TYPES, CITIES, DESCRIPTIONS, OFFERS_BY_TYPE} from '../const.js';
 
 const generateId = () => Date.now() + Math.random();
 
-const generateDestination = () => ({
-  id: generateId(),
-  name: getRandomArrayElement(CITIES),
+const generateDestination = (city, index) => ({
+  id: `destination-${index}`,
+  name: city,
   description: Array.from({length: getRandomInteger(1, 3)},
     () => getRandomArrayElement(DESCRIPTIONS)).join(' '),
-  pictures: Array.from({length: getRandomInteger(1, 3)}, () => ({
-    src: `https://loremflickr.com/248/152?random=${Math.random()}`,
-    description: 'Random photo'
+  pictures: Array.from({length: getRandomInteger(1, 3)}, (picIndex) => ({
+    src: `https://picsum.photos/248/152?random=${index}${picIndex}`,
+    description: `Photo of ${city}`
   }))
 });
 
@@ -37,7 +37,9 @@ const generatePoint = (destinations) => {
 };
 
 const generatePoints = (count) => {
-  const destinations = Array.from({length: 5}, generateDestination);
+  // Берём уникальные города и создаём для каждого destination с понятным id
+  const uniqueCities = [...new Set(CITIES)];
+  const destinations = uniqueCities.map((city, index) => generateDestination(city, index));
 
   const points = Array.from({length: count}, () => generatePoint(destinations));
 

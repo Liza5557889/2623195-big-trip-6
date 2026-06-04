@@ -1,6 +1,6 @@
 import RoutePointView from '../view/point-view.js';
 import EditFormView from '../view/edit-form-view.js';
-import {render, replace} from '../framework/render.js';
+import {render, replace, remove} from '../framework/render.js';
 
 export default class PointPresenter {
   #pointComponent = null;
@@ -11,6 +11,7 @@ export default class PointPresenter {
   #container = null;
   #handleDataChange = null;
   #handleModeChange = null;
+  #isEditFormOpen = false;
 
   constructor({container, onDataChange, onModeChange}) {
     this.#container = container;
@@ -39,19 +40,29 @@ export default class PointPresenter {
       offers: this.#getPointOffers()
     });
 
-    this.#pointComponent.setEditClickHandler(() => {
-      this.#replacePointToForm();
-    });
+    this.#setPointHandlers();
 
-    this.#pointComponent.setFavoriteClickHandler(() => {
-      const updatedPoint = {
-        ...this.#point,
-        isFavorite: !this.#point.isFavorite
-      };
-      this.#handleDataChange(updatedPoint);
-    });
+    if (oldPointComponent && oldPointComponent.element.parentElement) {
+      replace(this.#pointComponent, oldPointComponent);
+    } else {
+      render(this.#pointComponent, this.#container);
+    }
+    remove(oldPointComponent);
+  }
 
-    replace(this.#pointComponent, oldPointComponent);
+  destroy() {
+    if (this.#pointComponent) {
+      remove(this.#pointComponent);
+    }
+    if (this.#editFormComponent) {
+      remove(this.#editFormComponent);
+    }
+  }
+
+  resetView() {
+    if (this.#editFormComponent && this.#isEditFormOpen) {
+      this.#replaceFormToPoint();
+    }
   }
 
   #createComponents() {
@@ -64,11 +75,17 @@ export default class PointPresenter {
     this.#editFormComponent = new EditFormView({
       point: this.#point,
       destinations: this.#destinations,
-      offers: this.#getPointOffers()
+      offers: this.#offers,
+      isNewPoint: false
     });
   }
 
   #setHandlers() {
+    this.#setPointHandlers();
+    this.#setFormHandlers();
+  }
+
+  #setPointHandlers() {
     this.#pointComponent.setEditClickHandler(() => {
       this.#replacePointToForm();
     });
@@ -80,8 +97,11 @@ export default class PointPresenter {
       };
       this.#handleDataChange(updatedPoint);
     });
+  }
 
-    this.#editFormComponent.setSubmitHandler(() => {
+  #setFormHandlers() {
+    this.#editFormComponent.setSubmitHandler((updatedPoint) => {
+      this.#handleDataChange(updatedPoint);
       this.#replaceFormToPoint();
     });
 
@@ -108,19 +128,26 @@ export default class PointPresenter {
   }
 
   #replacePointToForm() {
+    // Если форма уже открыта, ничего не делаем
+    if (this.#isEditFormOpen) {
+      return;
+    }
+
+    // Уведомляем презентер, что нужно закрыть другие формы
     this.#handleModeChange();
+
     replace(this.#editFormComponent, this.#pointComponent);
+    this.#isEditFormOpen = true;
     this.#editFormComponent.setFocus();
   }
 
   #replaceFormToPoint() {
-    replace(this.#pointComponent, this.#editFormComponent);
-    this.#editFormComponent.removeEscKeyHandler();
-  }
-
-  resetView() {
-    if (this.#editFormComponent !== null && document.body.contains(this.#editFormComponent.element)) {
-      this.#replaceFormToPoint();
+    if (!this.#isEditFormOpen) {
+      return;
     }
+
+    replace(this.#pointComponent, this.#editFormComponent);
+    this.#isEditFormOpen = false;
+    this.#editFormComponent.removeEscKeyHandler();
   }
 }
