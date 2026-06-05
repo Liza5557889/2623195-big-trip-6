@@ -5,14 +5,14 @@ export default class RoutePointView extends AbstractView {
   constructor({point, destination, offers}) {
     super();
     this._point = point;
-    this._destination = destination;
+    this._destination = destination || { name: '' }; // Защита от undefined
     this._offers = offers;
     this._callbacks = {};
   }
 
   get template() {
     const {type, basePrice, dateFrom, dateTo, isFavorite} = this._point;
-    const {name: destinationName} = this._destination;
+    const destinationName = this._destination?.name || ''; // Защита от undefined
 
     const date = humanizePointDate(dateFrom);
     const startTime = humanizePointTime(dateFrom);

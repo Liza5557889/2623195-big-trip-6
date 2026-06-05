@@ -38,7 +38,6 @@ export default class EditFormView extends AbstractStatefulView {
   #createTemplate(state) {
     const {type, destination: destinationId, dateFrom, dateTo, basePrice, offers: selectedOffers} = state;
     const destinationObj = this.#destinations.find((d) => d.id === destinationId);
-    const destinationName = destinationObj ? destinationObj.name : '';
 
     const dateFromFormatted = humanizePointDate(dateFrom);
     const dateToFormatted = humanizePointDate(dateTo);
@@ -133,7 +132,7 @@ export default class EditFormView extends AbstractStatefulView {
                 <span class="visually-hidden">Price</span>
                 &euro;
               </label>
-              <input class="event__input event__input--price" id="event-price-1" type="text" name="event-price" value="${basePrice}">
+              <input class="event__input event__input--price" id="event-price-1" type="number" name="event-price" value="${basePrice}" min="0" step="1">
             </div>
             <button class="event__save-btn btn btn--blue" type="submit">Save</button>
             <button class="event__reset-btn" type="reset">${buttonText}</button>
@@ -156,7 +155,7 @@ export default class EditFormView extends AbstractStatefulView {
       this.#datepickerFrom = flatpickr(startDateInput, {
         dateFormat: 'd/m/y H:i',
         enableTime: true,
-        time_24hr: true,
+        time24hr: true,
         defaultDate: this._state.dateFrom,
         onChange: ([date]) => {
           if (date) {
@@ -174,7 +173,7 @@ export default class EditFormView extends AbstractStatefulView {
       this.#datepickerTo = flatpickr(endDateInput, {
         dateFormat: 'd/m/y H:i',
         enableTime: true,
-        time_24hr: true,
+        time24hr: true,
         defaultDate: this._state.dateTo,
         onChange: ([date]) => {
           if (date && date >= this._state.dateFrom) {

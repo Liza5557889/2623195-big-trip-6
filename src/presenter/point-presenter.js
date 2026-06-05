@@ -12,6 +12,7 @@ export default class PointPresenter {
   #handleDataChange = null;
   #handleModeChange = null;
   #isEditFormOpen = false;
+  #isNewPoint = false;
 
   constructor({container, onDataChange, onModeChange}) {
     this.#container = container;
@@ -19,14 +20,22 @@ export default class PointPresenter {
     this.#handleModeChange = onModeChange;
   }
 
-  init(point, destinations, offers) {
+  init(point, destinations, offers, isNewPoint = false) {
     this.#point = point;
     this.#destinations = destinations;
     this.#offers = offers;
+    this.#isNewPoint = isNewPoint;
 
     this.#createComponents();
     this.#setHandlers();
-    render(this.#pointComponent, this.#container);
+
+    if (this.#isNewPoint) {
+      render(this.#editFormComponent, this.#container);
+      this.#isEditFormOpen = true;
+      this.#editFormComponent.setFocus();
+    } else {
+      render(this.#pointComponent, this.#container);
+    }
   }
 
   update(point) {
@@ -56,11 +65,12 @@ export default class PointPresenter {
     }
     if (this.#editFormComponent) {
       remove(this.#editFormComponent);
+      this.#editFormComponent.removeEscKeyHandler();
     }
   }
 
   resetView() {
-    if (this.#editFormComponent && this.#isEditFormOpen) {
+    if (this.#editFormComponent && this.#isEditFormOpen && !this.#isNewPoint) {
       this.#replaceFormToPoint();
     }
   }
@@ -76,7 +86,7 @@ export default class PointPresenter {
       point: this.#point,
       destinations: this.#destinations,
       offers: this.#offers,
-      isNewPoint: false
+      isNewPoint: this.#isNewPoint
     });
   }
 
@@ -95,31 +105,67 @@ export default class PointPresenter {
         ...this.#point,
         isFavorite: !this.#point.isFavorite
       };
-      this.#handleDataChange(updatedPoint);
+      this.#handleDataChange(updatedPoint, 'update');
     });
   }
 
   #setFormHandlers() {
     this.#editFormComponent.setSubmitHandler((updatedPoint) => {
-      this.#handleDataChange(updatedPoint);
-      this.#replaceFormToPoint();
+      if (this.#isNewPoint) {
+        const newPoint = {
+          ...updatedPoint,
+          id: Date.now() + Math.random()
+        };
+        this.#handleDataChange(newPoint, 'add');
+      } else {
+        this.#handleDataChange(updatedPoint, 'update');
+      }
+      this.#destroy();
     });
 
     this.#editFormComponent.setDeleteHandler(() => {
-      this.#handleDataChange(null);
+      if (this.#isNewPoint) {
+        this.#destroy();
+      } else {
+        this.#handleDataChange(this.#point.id, 'delete');
+      }
     });
 
     this.#editFormComponent.setRollupClickHandler(() => {
-      this.#replaceFormToPoint();
+      if (this.#isNewPoint) {
+        this.#destroy();
+      } else {
+        this.#replaceFormToPoint();
+      }
     });
 
     this.#editFormComponent.setEscKeyHandler(() => {
-      this.#replaceFormToPoint();
+      if (this.#isNewPoint) {
+        this.#destroy();
+      } else {
+        this.#replaceFormToPoint();
+      }
     });
   }
 
+  #destroy() {
+    if (this.#pointComponent) {
+      remove(this.#pointComponent);
+    }
+    if (this.#editFormComponent) {
+      remove(this.#editFormComponent);
+      this.#editFormComponent.removeEscKeyHandler();
+    }
+    if (this.#isNewPoint) {
+      this.#handleModeChange();
+    }
+  }
+
   #getDestination() {
-    return this.#destinations.find((dest) => dest.id === this.#point.destination);
+    if (!this.#point.destination) {
+      return { name: '' };
+    }
+    return this.#destinations.find((dest) => dest.id === this.#point.destination) || { name: '' };
   }
 
   #getPointOffers() {
@@ -128,14 +174,10 @@ export default class PointPresenter {
   }
 
   #replacePointToForm() {
-    // Если форма уже открыта, ничего не делаем
     if (this.#isEditFormOpen) {
       return;
     }
-
-    // Уведомляем презентер, что нужно закрыть другие формы
     this.#handleModeChange();
-
     replace(this.#editFormComponent, this.#pointComponent);
     this.#isEditFormOpen = true;
     this.#editFormComponent.setFocus();
@@ -145,9 +187,10 @@ export default class PointPresenter {
     if (!this.#isEditFormOpen) {
       return;
     }
-
-    replace(this.#pointComponent, this.#editFormComponent);
-    this.#isEditFormOpen = false;
-    this.#editFormComponent.removeEscKeyHandler();
+    if (this.#editFormComponent && this.#editFormComponent.element.parentElement) {
+      replace(this.#pointComponent, this.#editFormComponent);
+      this.#isEditFormOpen = false;
+      this.#editFormComponent.removeEscKeyHandler();
+    }
   }
 }
