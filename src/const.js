@@ -59,7 +59,6 @@ const OFFERS_BY_TYPE = {
   ]
 };
 
-
 const FilterType = {
   EVERYTHING: 'everything',
   FUTURE: 'future',
@@ -67,6 +66,17 @@ const FilterType = {
   PAST: 'past'
 };
 
-export {TYPES, CITIES, DESCRIPTIONS, OFFERS_BY_TYPE, FilterType};
+const SortType = {
+  DAY: 'day',
+  TIME: 'time',
+  PRICE: 'price'
+};
 
-
+export {
+  TYPES,
+  CITIES,
+  DESCRIPTIONS,
+  OFFERS_BY_TYPE,
+  FilterType,
+  SortType
+};
