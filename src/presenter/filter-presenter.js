@@ -18,6 +18,7 @@ export default class FilterPresenter {
   init() {
     this.#currentFilter = this.#filterModel.filter;
     this.#filterModel.addObserver(this.#handleModelEvent);
+    this.#pointsModel.addObserver(this.#handlePointsModelEvent);
     this.#renderFilter();
   }
 
@@ -41,6 +42,16 @@ export default class FilterPresenter {
 
   #generateFilters() {
     const points = this.#pointsModel.getRawPoints();
+
+    if (points.length === 0) {
+      return [
+        {type: FilterType.EVERYTHING, count: 0},
+        {type: FilterType.FUTURE, count: 0},
+        {type: FilterType.PRESENT, count: 0},
+        {type: FilterType.PAST, count: 0}
+      ];
+    }
+
     const now = new Date();
 
     const futureCount = points.filter((point) => new Date(point.dateFrom) > now).length;
@@ -67,6 +78,10 @@ export default class FilterPresenter {
   };
 
   #handleModelEvent = () => {
+    this.#renderFilter();
+  };
+
+  #handlePointsModelEvent = () => {
     this.#renderFilter();
   };
 }

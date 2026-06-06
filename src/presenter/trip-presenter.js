@@ -33,7 +33,7 @@ export default class TripPresenter {
 
   init() {
     this.#pointsModel.addObserver(this.#handleModelEvent);
-    this.#filterModel.addObserver(this.#handleModelEvent);
+    this.#filterModel.addObserver(this.#handleFilterChange);
     this.#renderBoard();
   }
 
@@ -43,7 +43,7 @@ export default class TripPresenter {
     }
     this.#isCreating = true;
 
-    this.#filterModel.setFilter('everything');
+    this.#filterModel.setFilter('MAJOR', FilterType.EVERYTHING);
     this.#currentSortType = SortType.DAY;
 
     this.#renderBoard();
@@ -86,12 +86,14 @@ export default class TripPresenter {
     this.#isCreating = false;
   }
 
-  #handleModelEvent = (updateType) => {
-    if (updateType === 'INIT') {
-      this.#renderBoard();
-    } else {
-      this.#renderBoard();
-    }
+  #handleModelEvent = () => {
+
+    this.#renderBoard();
+  };
+
+  #handleFilterChange = () => {
+    this.#currentSortType = SortType.DAY;
+    this.#renderBoard();
   };
 
   #handleDataChange = async (data, actionType = 'update') => {
@@ -100,8 +102,10 @@ export default class TripPresenter {
         await this.#pointsModel.updatePoint('MINOR', data);
         break;
       case 'delete':
+        await this.#pointsModel.deletePoint('MINOR', data);
         break;
       case 'add':
+        await this.#pointsModel.addPoint('MINOR', data);
         break;
     }
 
@@ -177,18 +181,24 @@ export default class TripPresenter {
     const filterType = this.#filterModel.filter;
     const now = new Date();
 
+    let result;
     switch (filterType) {
       case FilterType.FUTURE:
-        return points.filter((point) => new Date(point.dateFrom) > now);
+        result = points.filter((point) => new Date(point.dateFrom) > now);
+        break;
       case FilterType.PRESENT:
-        return points.filter((point) =>
+        result = points.filter((point) =>
           new Date(point.dateFrom) <= now && new Date(point.dateTo) >= now
         );
+        break;
       case FilterType.PAST:
-        return points.filter((point) => new Date(point.dateTo) < now);
+        result = points.filter((point) => new Date(point.dateTo) < now);
+        break;
       default:
-        return [...points];
+        result = [...points];
     }
+
+    return result;
   }
 
   #renderSort() {

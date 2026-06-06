@@ -1,6 +1,6 @@
 import RoutePointView from '../view/point-view.js';
 import EditFormView from '../view/edit-form-view.js';
-import {render, replace, remove} from '../framework/render.js';
+import { render, replace, remove } from '../framework/render.js';
 
 export default class PointPresenter {
   #pointComponent = null;
@@ -13,8 +13,9 @@ export default class PointPresenter {
   #handleModeChange = null;
   #isEditFormOpen = false;
   #isNewPoint = false;
+  #isSaving = false;
 
-  constructor({container, onDataChange, onModeChange}) {
+  constructor({ container, onDataChange, onModeChange }) {
     this.#container = container;
     this.#handleDataChange = onDataChange;
     this.#handleModeChange = onModeChange;
@@ -25,6 +26,7 @@ export default class PointPresenter {
     this.#destinations = destinations;
     this.#offers = offers;
     this.#isNewPoint = isNewPoint;
+    this.#isSaving = false;
 
     this.#createComponents();
     this.#setHandlers();
@@ -46,7 +48,7 @@ export default class PointPresenter {
     this.#pointComponent = new RoutePointView({
       point: this.#point,
       destination: this.#getDestination(),
-      offers: this.#getPointOffers()
+      offers: this.#getPointOffers(),
     });
 
     this.#setPointHandlers();
@@ -79,14 +81,14 @@ export default class PointPresenter {
     this.#pointComponent = new RoutePointView({
       point: this.#point,
       destination: this.#getDestination(),
-      offers: this.#getPointOffers()
+      offers: this.#getPointOffers(),
     });
 
     this.#editFormComponent = new EditFormView({
       point: this.#point,
       destinations: this.#destinations,
       offers: this.#offers,
-      isNewPoint: this.#isNewPoint
+      isNewPoint: this.#isNewPoint,
     });
   }
 
@@ -100,34 +102,112 @@ export default class PointPresenter {
       this.#replacePointToForm();
     });
 
-    this.#pointComponent.setFavoriteClickHandler(() => {
+    this.#pointComponent.setFavoriteClickHandler(async () => {
       const updatedPoint = {
         ...this.#point,
-        isFavorite: !this.#point.isFavorite
+        isFavorite: !this.#point.isFavorite,
       };
-      this.#handleDataChange(updatedPoint, 'update');
+
+      try {
+        await this.#handleDataChange(updatedPoint, 'update');
+      } catch {
+        this.#pointComponent.shake();
+      }
     });
   }
 
+  #validatePoint(point) {
+    if (!point.destination || point.destination === '') {
+      return false;
+    }
+
+    if (new Date(point.dateTo) < new Date(point.dateFrom)) {
+      return false;
+    }
+
+    if (point.basePrice < 0) {
+      return false;
+    }
+
+    if (!point.type) {
+      return false;
+    }
+
+    return true;
+  }
+
+  #getOffersIds(offersTitles, pointType) {
+    const offersForType = this.#offers[pointType] || [];
+    return offersTitles
+      .map((offerTitle) => {
+        const offer = offersForType.find((o) => o.title === offerTitle);
+        return offer ? offer.id : null;
+      })
+      .filter((id) => id !== null);
+  }
+
   #setFormHandlers() {
-    this.#editFormComponent.setSubmitHandler((updatedPoint) => {
-      if (this.#isNewPoint) {
-        const newPoint = {
-          ...updatedPoint,
-          id: Date.now() + Math.random()
-        };
-        this.#handleDataChange(newPoint, 'add');
-      } else {
-        this.#handleDataChange(updatedPoint, 'update');
+    this.#editFormComponent.setSubmitHandler(async (updatedPoint) => {
+      if (this.#isSaving) {
+        return;
       }
-      this.#destroy();
+
+      if (!this.#validatePoint(updatedPoint)) {
+        this.#editFormComponent.shake();
+        return;
+      }
+
+      this.#isSaving = true;
+      this.#setButtonsDisabled(true);
+
+      try {
+        if (this.#isNewPoint) {
+          // Преобразуем названия опций в ID
+          const offerIds = this.#getOffersIds(
+            updatedPoint.offers || [],
+            updatedPoint.type
+          );
+
+          const newPoint = {
+            id: null,
+            type: updatedPoint.type || 'flight',
+            destination: updatedPoint.destination, // Отправляем ID города
+            dateFrom: updatedPoint.dateFrom || new Date(),
+            dateTo: updatedPoint.dateTo || new Date(),
+            basePrice: updatedPoint.basePrice || 0,
+            offers: offerIds,
+            isFavorite: updatedPoint.isFavorite || false,
+          };
+          await this.#handleDataChange(newPoint, 'add');
+        } else {
+          await this.#handleDataChange(updatedPoint, 'update');
+        }
+        this.#destroy();
+      } catch (err) {
+        this.#setButtonsDisabled(false);
+        this.#editFormComponent.shake();
+        this.#isSaving = false;
+      }
     });
 
-    this.#editFormComponent.setDeleteHandler(() => {
-      if (this.#isNewPoint) {
-        this.#destroy();
-      } else {
-        this.#handleDataChange(this.#point.id, 'delete');
+    this.#editFormComponent.setDeleteHandler(async () => {
+      if (this.#isSaving) {
+        return;
+      }
+
+      this.#isSaving = true;
+      this.#setButtonsDisabled(true);
+
+      try {
+        if (this.#isNewPoint) {
+          this.#destroy();
+        } else {
+          await this.#handleDataChange(this.#point.id, 'delete');
+        }
+      } catch (err) {
+        this.#setButtonsDisabled(false);
+        this.#editFormComponent.shake();
+        this.#isSaving = false;
       }
     });
 
@@ -148,6 +228,24 @@ export default class PointPresenter {
     });
   }
 
+  #setButtonsDisabled(isDisabled) {
+    const saveBtn = this.#editFormComponent.element.querySelector(
+      '.event__save-btn'
+    );
+    const deleteBtn = this.#editFormComponent.element.querySelector(
+      '.event__reset-btn'
+    );
+
+    if (saveBtn) {
+      saveBtn.disabled = isDisabled;
+      saveBtn.textContent = isDisabled ? 'Saving...' : 'Save';
+    }
+    if (deleteBtn && !this.#isNewPoint) {
+      deleteBtn.disabled = isDisabled;
+      deleteBtn.textContent = isDisabled ? 'Deleting...' : 'Delete';
+    }
+  }
+
   #destroy() {
     if (this.#pointComponent) {
       remove(this.#pointComponent);
@@ -165,12 +263,18 @@ export default class PointPresenter {
     if (!this.#point.destination) {
       return { name: '' };
     }
-    return this.#destinations.find((dest) => dest.id === this.#point.destination) || { name: '' };
+    return (
+      this.#destinations.find((dest) => dest.id === this.#point.destination) || {
+        name: '',
+      }
+    );
   }
 
   #getPointOffers() {
     const offersForType = this.#offers[this.#point.type] || [];
-    return offersForType.filter((offer) => this.#point.offers.includes(offer.id));
+    return offersForType.filter((offer) =>
+      this.#point.offers.includes(offer.id)
+    );
   }
 
   #replacePointToForm() {
@@ -187,7 +291,10 @@ export default class PointPresenter {
     if (!this.#isEditFormOpen) {
       return;
     }
-    if (this.#editFormComponent && this.#editFormComponent.element.parentElement) {
+    if (
+      this.#editFormComponent &&
+      this.#editFormComponent.element.parentElement
+    ) {
       replace(this.#pointComponent, this.#editFormComponent);
       this.#isEditFormOpen = false;
       this.#editFormComponent.removeEscKeyHandler();
