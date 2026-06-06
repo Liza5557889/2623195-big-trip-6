@@ -346,6 +346,17 @@ export default class EditFormView extends AbstractStatefulView {
     super.removeElement();
   }
 
+  shake() {
+    const form = this.element.querySelector('.event--edit');
+    if (form) {
+      form.style.animation = 'shake 0.6s';
+      form.addEventListener('animationend', () => {
+        form.style.animation = '';
+      }, {once: true});
+    }
+
+  }
+
   static parsePointToState(point) {
     return {
       id: point.id,

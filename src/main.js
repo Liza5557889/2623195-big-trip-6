@@ -6,7 +6,8 @@ import PointsApiService from './api/points-api-service.js';
 
 const generateRandomString = () => Math.random().toString(36).substring(2, 15);
 const AUTHORIZATION = `Basic ${generateRandomString()}`;
-const END_POINT = 'https://24.objects.htmlacademy.pro/big-trip'; // Исправленный адрес
+const END_POINT = 'https://24.objects.htmlacademy.pro/big-trip';
+
 
 const pageHeaderElement = document.querySelector('.page-header');
 const tripControlsFilters = pageHeaderElement.querySelector('.trip-controls__filters');
@@ -14,27 +15,22 @@ const pageMainElement = document.querySelector('.page-main');
 const tripEventsElement = pageMainElement.querySelector('.trip-events');
 
 const pointsApiService = new PointsApiService(END_POINT, AUTHORIZATION);
-const pointsModel = new PointsModel({pointsApiService});
+const pointsModel = new PointsModel({ pointsApiService });
 const filterModel = new FilterModel();
 
 const filterPresenter = new FilterPresenter({
   filterContainer: tripControlsFilters,
   filterModel,
-  pointsModel
+  pointsModel,
 });
 
 const tripPresenter = new TripPresenter({
   tripEventsContainer: tripEventsElement,
   pointsModel,
-  filterModel
+  filterModel,
 });
 
 filterPresenter.init();
 tripPresenter.init();
 
 pointsModel.init();
-
-const newEventButton = document.querySelector('.trip-main__event-add-btn');
-newEventButton.addEventListener('click', () => {
-  tripPresenter.createPoint();
-});

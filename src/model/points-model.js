@@ -28,14 +28,17 @@ export default class PointsModel extends Observable {
       this.#points = points;
       this.#destinations = destinations;
       this.#offers = offers;
+
+      this._notify('INIT');
+      this._notify('MAJOR');
     } catch (err) {
       this.#hasError = true;
       this.#points = [];
       this.#destinations = [];
       this.#offers = {};
+      this._notify('INIT');
     } finally {
       this.#isLoading = false;
-      this._notify('INIT');
     }
   }
 
@@ -85,6 +88,21 @@ export default class PointsModel extends Observable {
     if (index !== -1) {
       this.#points[index] = response;
       this._notify(updateType, response);
+    }
+  }
+
+  async addPoint(updateType, newPoint) {
+    const response = await this.#pointsApiService.addPoint(newPoint);
+    this.#points.push(response);
+    this._notify(updateType, response);
+  }
+
+  async deletePoint(updateType, pointId) {
+    await this.#pointsApiService.deletePoint(pointId);
+    const index = this.#points.findIndex((point) => point.id === pointId);
+    if (index !== -1) {
+      this.#points.splice(index, 1);
+      this._notify(updateType, pointId);
     }
   }
 
