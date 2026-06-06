@@ -1,18 +1,42 @@
-import {generatePoints} from '../mock/point.js';
-import {OFFERS_BY_TYPE} from '../const.js';
+import Observable from '../framework/observable.js';
 
-const POINT_COUNT = 5;
-
-export default class PointsModel {
-  #points = null;
-  #destinations = null;
-  #offers = OFFERS_BY_TYPE;
+export default class PointsModel extends Observable {
+  #pointsApiService = null;
+  #points = [];
+  #destinations = [];
+  #offers = {};
   #activeFilter = 'everything';
+  #isLoading = true;
+  #hasError = false;
 
-  constructor() {
-    const mockData = generatePoints(POINT_COUNT);
-    this.#points = mockData.points;
-    this.#destinations = mockData.destinations;
+  constructor({pointsApiService}) {
+    super();
+    this.#pointsApiService = pointsApiService;
+  }
+
+  async init() {
+    this.#isLoading = true;
+    this.#hasError = false;
+
+    try {
+      const [points, destinations, offers] = await Promise.all([
+        this.#pointsApiService.getPoints(),
+        this.#pointsApiService.getDestinations(),
+        this.#pointsApiService.getOffers()
+      ]);
+
+      this.#points = points;
+      this.#destinations = destinations;
+      this.#offers = offers;
+    } catch (err) {
+      this.#hasError = true;
+      this.#points = [];
+      this.#destinations = [];
+      this.#offers = {};
+    } finally {
+      this.#isLoading = false;
+      this._notify('INIT');
+    }
   }
 
   getPoints() {
@@ -47,27 +71,21 @@ export default class PointsModel {
     this.#activeFilter = filterType;
   }
 
-  updatePoint(updatedPoint) {
-    const index = this.#points.findIndex((point) => point.id === updatedPoint.id);
-    if (index !== -1) {
-      this.#points[index] = updatedPoint;
-      return true;
-    }
-    return false;
+  isLoading() {
+    return this.#isLoading;
   }
 
-  addPoint(newPoint) {
-    this.#points.push(newPoint);
-    return true;
+  hasError() {
+    return this.#hasError;
   }
 
-  deletePoint(pointId) {
-    const index = this.#points.findIndex((point) => point.id === pointId);
+  async updatePoint(updateType, updatedPoint) {
+    const response = await this.#pointsApiService.updatePoint(updatedPoint);
+    const index = this.#points.findIndex((point) => point.id === response.id);
     if (index !== -1) {
-      this.#points.splice(index, 1);
-      return true;
+      this.#points[index] = response;
+      this._notify(updateType, response);
     }
-    return false;
   }
 
   #getFilteredPoints() {
