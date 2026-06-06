@@ -9,7 +9,7 @@ export default class PointsModel extends Observable {
   #isLoading = true;
   #hasError = false;
 
-  constructor({pointsApiService}) {
+  constructor({ pointsApiService }) {
     super();
     this.#pointsApiService = pointsApiService;
   }
@@ -82,12 +82,55 @@ export default class PointsModel extends Observable {
     return this.#hasError;
   }
 
+  getTripDestinations() {
+    const uniqueDestinations = [];
+    for (const point of this.#points) {
+      const destination = this.#destinations.find((d) => d.id === point.destination);
+      if (destination && !uniqueDestinations.includes(destination.name)) {
+        uniqueDestinations.push(destination.name);
+      }
+    }
+    return uniqueDestinations;
+  }
+
+  getTripStartDate() {
+    if (this.#points.length === 0) {
+      return null;
+    }
+    const sortedPoints = [...this.#points].sort((a, b) => new Date(a.dateFrom) - new Date(b.dateFrom));
+    return sortedPoints[0].dateFrom;
+  }
+
+  getTripEndDate() {
+    if (this.#points.length === 0) {
+      return null;
+    }
+    const sortedPoints = [...this.#points].sort((a, b) => new Date(b.dateTo) - new Date(a.dateTo));
+    return sortedPoints[0].dateTo;
+  }
+
+  getTotalPrice() {
+    let total = 0;
+    for (const point of this.#points) {
+      total += point.basePrice;
+      const offersForType = this.#offers[point.type] || [];
+      for (const offerId of point.offers) {
+        const offer = offersForType.find((o) => o.id === offerId);
+        if (offer) {
+          total += offer.price;
+        }
+      }
+    }
+    return total;
+  }
+
   async updatePoint(updateType, updatedPoint) {
     const response = await this.#pointsApiService.updatePoint(updatedPoint);
     const index = this.#points.findIndex((point) => point.id === response.id);
     if (index !== -1) {
       this.#points[index] = response;
       this._notify(updateType, response);
+      this._notify('TRIP_INFO');
     }
   }
 
@@ -95,6 +138,7 @@ export default class PointsModel extends Observable {
     const response = await this.#pointsApiService.addPoint(newPoint);
     this.#points.push(response);
     this._notify(updateType, response);
+    this._notify('TRIP_INFO');
   }
 
   async deletePoint(updateType, pointId) {
@@ -103,6 +147,7 @@ export default class PointsModel extends Observable {
     if (index !== -1) {
       this.#points.splice(index, 1);
       this._notify(updateType, pointId);
+      this._notify('TRIP_INFO');
     }
   }
 
