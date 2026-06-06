@@ -3,16 +3,18 @@ import PointsModel from './model/points-model.js';
 import FilterModel from './model/filter-model.js';
 import FilterPresenter from './presenter/filter-presenter.js';
 import PointsApiService from './api/points-api-service.js';
+import TripInfoView from './view/trip-info-view.js';
+import { render } from './framework/render.js';
 
 const generateRandomString = () => Math.random().toString(36).substring(2, 15);
 const AUTHORIZATION = `Basic ${generateRandomString()}`;
 const END_POINT = 'https://24.objects.htmlacademy.pro/big-trip';
 
-
 const pageHeaderElement = document.querySelector('.page-header');
 const tripControlsFilters = pageHeaderElement.querySelector('.trip-controls__filters');
 const pageMainElement = document.querySelector('.page-main');
 const tripEventsElement = pageMainElement.querySelector('.trip-events');
+const tripMainElement = document.querySelector('.trip-main');
 
 const pointsApiService = new PointsApiService(END_POINT, AUTHORIZATION);
 const pointsModel = new PointsModel({ pointsApiService });
@@ -30,7 +32,41 @@ const tripPresenter = new TripPresenter({
   filterModel,
 });
 
+function updateTripInfo() {
+  const destinations = pointsModel.getTripDestinations();
+  const dateFrom = pointsModel.getTripStartDate();
+  const dateTo = pointsModel.getTripEndDate();
+  const totalPrice = pointsModel.getTotalPrice();
+
+  const oldTripInfo = document.querySelector('.trip-info');
+  if (oldTripInfo) {
+    oldTripInfo.remove();
+  }
+
+  const tripInfoView = new TripInfoView({
+    destinations,
+    dateFrom,
+    dateTo,
+    totalPrice
+  });
+
+  render(tripInfoView, tripMainElement, 'afterbegin');
+}
+
+pointsModel.addObserver(() => {
+  updateTripInfo();
+});
+
 filterPresenter.init();
 tripPresenter.init();
 
-pointsModel.init();
+pointsModel.init().then(() => {
+  updateTripInfo();
+});
+
+const newEventButton = document.querySelector('.trip-main__event-add-btn');
+if (newEventButton) {
+  newEventButton.addEventListener('click', () => {
+    tripPresenter.createPoint();
+  });
+}
